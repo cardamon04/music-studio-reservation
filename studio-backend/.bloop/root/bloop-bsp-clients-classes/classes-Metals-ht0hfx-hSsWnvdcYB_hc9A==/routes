@@ -1,0 +1,36 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# https://www.playframework.com/documentation/latest/ScalaRouting
+# ~~~~
+
+# An example controller showing a sample home page
+GET      /                              controllers.HomeController.index()
+
+# Map static resources from the /public folder to the /assets URL path
+
+# Health check / Ping
+GET      /api/ping                      controllers.health.ApiHealthController.ping()
+
+# Static assets (Twirl の main.scala.html が参照する)
+GET      /assets/*file                  controllers.Assets.versioned(path="/public", file: Asset)
+
+# 予約カレンダー関連
+GET      /api/booking-calendar          controllers.booking.BookingCalendarController.getByDate(date: String, studioId: Option[String])
+
+# 予約管理関連
+POST     /api/bookings                  controllers.booking.BookingController.create()
+GET      /api/bookings/:id              controllers.booking.BookingController.getById(id: String)
+DELETE   /api/bookings/:id              controllers.booking.BookingController.cancel(id: String)
+
+# 備品管理関連
+GET      /api/equipment                 controllers.equipment.EquipmentController.getAllActive()
+GET      /api/equipment/:id             controllers.equipment.EquipmentController.getById(id: String)
+
+# 学生管理関連
+GET      /api/students                  controllers.student.StudentController.getAllActive()
+GET      /api/students/search           controllers.student.StudentController.searchByName(name: String)
+GET      /api/students/:studentNumber   controllers.student.StudentController.getByStudentNumber(studentNumber: String)
+
+# 期間時刻管理関連
+GET      /api/period-times              controllers.period.PeriodTimeController.getAllPeriodTimes()
+GET      /api/period-times/:periodId    controllers.period.PeriodTimeController.getPeriodTimeByPeriodId(periodId: String)
