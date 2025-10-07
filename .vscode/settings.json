@@ -1,0 +1,23 @@
+{
+  "files.watcherExclude": {
+    "**/target": true
+  },
+  "metals.inlayHints.implicitArguments.enable": true,
+  "cSpell.words": [
+    "Appender",
+    "ASYNCFILE",
+    "ASYNCSTDOUT",
+    "databind",
+    "Dconsole",
+    "Dfile",
+    "ehcache",
+    "guice",
+    "Jansi",
+    "jdbc",
+    "logback",
+    "pekko",
+    "pinia",
+    "scalac",
+    "scalatestplus"
+  ]
+}
