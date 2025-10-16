@@ -13,7 +13,7 @@ import domain.student.StudentNumber
 import domain.equipment.{EquipmentItem, EquipmentId}
 
 /** 予約作成・管理を行うコントローラー
-  * 
+  *
   * DDDのアプリケーション層として、ドメインサービスを呼び出して
   * 予約の作成・更新・削除などの操作を行う
   */
@@ -26,7 +26,7 @@ class BookingController @Inject() (
     extends AbstractController(controllerComponents) {
 
   /** 予約作成リクエストのJSONフォーマット
-    * 
+    *
     * フロントエンドから送信される予約データの構造を定義
     * application.booking.CreateBookingRequestと同じ構造
     */
@@ -50,9 +50,9 @@ class BookingController @Inject() (
   implicit val controllerCreateBookingRequestReads: Reads[ControllerCreateBookingRequest] = Json.reads[ControllerCreateBookingRequest]
 
   /** 予約作成エンドポイント
-    * 
+    *
     * POST /api/bookings
-    * 
+    *
     * @return 作成された予約の情報
     */
   def create(): Action[JsValue] = Action.async(parse.json) { request =>
@@ -66,26 +66,22 @@ class BookingController @Inject() (
     request.body.validate[ControllerCreateBookingRequest] match {
       case JsSuccess(bookingRequest, _) =>
         loggerUtil.debug("D002", bookingRequest.toString())
+        loggerUtil.info("I001", s"スタジオ: ${bookingRequest.studioId}, 時間枠: ${bookingRequest.period}, 日付: ${bookingRequest.usageDate}")
 
-        // 日付の妥当性チェック
-        Try(LocalDate.parse(bookingRequest.usageDate)).toOption match {
-          case Some(usageDate) =>
-            loggerUtil.info("I001", s"スタジオ: ${bookingRequest.studioId}, 時間枠: ${bookingRequest.period}, 日付: $usageDate")
+        // 予約アプリケーションサービスを呼び出して予約を作
+        val serviceRequest = CreateBookingRequest(
+          studioId = bookingRequest.studioId,
+          period = bookingRequest.period,
+          usageDate = bookingRequest.usageDate,
+          reservationType = bookingRequest.reservationType,
+          members = bookingRequest.members,
+          equipmentItems = bookingRequest.equipmentItems.map { item =>
+            EquipmentItemRequest(item.equipmentId, item.quantity)
+          },
+          eventName = bookingRequest.eventName
+        )
 
-            // 予約アプリケーションサービスを呼び出して予約を作成
-            val serviceRequest = CreateBookingRequest(
-              studioId = bookingRequest.studioId,
-              period = bookingRequest.period,
-              usageDate = bookingRequest.usageDate,
-              reservationType = bookingRequest.reservationType,
-              members = bookingRequest.members,
-              equipmentItems = bookingRequest.equipmentItems.map { item =>
-                EquipmentItemRequest(item.equipmentId, item.quantity)
-              },
-              eventName = bookingRequest.eventName
-            )
-
-            bookingService.createBooking(serviceRequest).map { booking =>
+        bookingService.createBooking(serviceRequest).map { booking =>
               val response = Json.obj(
                 "bookingId" -> booking.bookingId.value,
                 "studioId" -> booking.studioId.value,
@@ -97,7 +93,7 @@ class BookingController @Inject() (
                 "equipmentItems" -> booking.equipmentItems.map { item =>
                   Json.obj(
                     "equipmentId" -> item.equipmentId.value,
-                    "quantity" -> item.quantity
+                    "quantity" -> item.quantity.value
                   )
                 },
                 "message" -> "予約が作成されました"
@@ -117,11 +113,6 @@ class BookingController @Inject() (
                 InternalServerError(Json.obj("error" -> "Internal server error"))
             }
 
-          case None =>
-            loggerUtil.error("E002", bookingRequest.usageDate)
-            Future.successful(BadRequest(Json.obj("error" -> "Invalid date format")))
-        }
-
       case JsError(errors) =>
         // JSONパースエラーの場合
         val errorMessage = errors.map { case (path, errors) =>
@@ -136,12 +127,12 @@ class BookingController @Inject() (
   }
 
   /** 予約取得エンドポイント
-    * 
+    *
     * GET /api/bookings/:id
     */
   def getById(bookingId: String): Action[AnyContent] = Action.async {
     loggerUtil.debug("D004", s"予約取得: $bookingId")
-    
+
     bookingService.getBooking(bookingId).map {
       case Some(booking) =>
         val response = Json.obj(
@@ -155,16 +146,16 @@ class BookingController @Inject() (
           "equipmentItems" -> booking.equipmentItems.map { item =>
             Json.obj(
               "equipmentId" -> item.equipmentId.value,
-              "quantity" -> item.quantity
+              "quantity" -> item.quantity.value
             )
           },
           "createdAt" -> booking.createdAt.toString,
           "updatedAt" -> booking.updatedAt.toString
         )
-        
+
         loggerUtil.info("I003", s"予約取得成功: $bookingId")
         Ok(response)
-        
+
       case None =>
         loggerUtil.warn("W001", s"予約が見つかりません: $bookingId")
         NotFound(Json.obj("error" -> "Booking not found"))
@@ -176,19 +167,19 @@ class BookingController @Inject() (
   }
 
   /** 予約キャンセルエンドポイント
-    * 
+    *
     * DELETE /api/bookings/:id
     */
   def cancel(bookingId: String): Action[AnyContent] = Action.async {
     loggerUtil.debug("D005", s"予約キャンセル: $bookingId")
-    
+
     bookingService.cancelBooking(bookingId).map { booking =>
       val response = Json.obj(
         "bookingId" -> booking.bookingId.value,
         "status" -> booking.status.value,
         "message" -> "予約がキャンセルされました"
       )
-      
+
       loggerUtil.businessLog("I004", "予約キャンセル", booking.bookingId.value, "")
       Ok(response)
     }.recover {

@@ -9,9 +9,13 @@ import application.booking.{
 import domain.booking.{
   Booking,
   BookingStatus,
+  BookingId,
   StudioId,
   PeriodId,
-  ReservationType
+  ReservationType,
+  EventName,
+  SlotStatus,
+  CalendarDate
 }
 import domain.reservationtype.{ReservationTypeRepository, ReservationTypeCode}
 import java.time.*
@@ -43,41 +47,34 @@ final class InMemoryBookingCalendarQueryService @Inject() (
 
   override def getByDate(
       date: LocalDate,
-      studioId: Option[String]
+      studioId: Option[StudioId]
   ): Future[BookingCalendarView] = {
     // InMemoryBookingRepositoryから実際の予約データを取得
     bookingRepository.findByDate(date).map { bookings =>
       val now = LocalDateTime.now()
       val rows = studios
-        .filter { case (id, _) => studioId.forall(_ == id) }
+        .filter { case (id, _) => studioId.forall(_.value == id) }
         .map { case (id, name) =>
           val studioBookings = bookings.filter(_.studioId.value == id)
           val slotViews = periods.map { case (pid, start, end) =>
             val bookingOpt = studioBookings.find(_.period.value == pid)
-            val (statusJp, bidOpt, rTypeOpt, eventNameOpt, usingStart) =
+            val (status, bidOpt, rTypeOpt, eventNameOpt, usingStart) =
               bookingOpt match {
                 case Some(booking) =>
                   val s = booking.status match {
-                    case BookingStatus.Reserved  => "予約済み"
-                    case BookingStatus.Completed => "使用中"
-                    case BookingStatus.Cancelled => "予約キャンセル"
+                    case BookingStatus.Reserved  => SlotStatus.Reserved
+                    case BookingStatus.Completed => SlotStatus.InUse
+                    case BookingStatus.Cancelled => SlotStatus.Cancelled
                   }
-                  val reservationTypeJp =
-                    booking.reservationType.value match {
-                      case "StudentRental"    => "学生レンタル"
-                      case "ClassRental"      => "授業レンタル"
-                      case "EventReservation" => "イベント予約"
-                      case _                  => "不明"
-                    }
                   (
                     s,
-                    Some(booking.bookingId.value),
-                    Some(reservationTypeJp),
-                    booking.eventName.map(_.value),
+                    Some(booking.bookingId),
+                    Some(booking.reservationType),
+                    booking.eventName,
                     None
                   )
                 case None =>
-                  ("空", None, None, None, None)
+                  (SlotStatus.Empty, None, None, None, None)
               }
             val slotStartDateTime = LocalDateTime.of(date, start)
             val graceExpired = bidOpt.isDefined &&
@@ -85,8 +82,8 @@ final class InMemoryBookingCalendarQueryService @Inject() (
               now.isAfter(slotStartDateTime.plusMinutes(10)) // 10分経過
 
             SlotView(
-              periodId = pid,
-              status = statusJp,
+              periodId = PeriodId.fromString(pid).get,
+              status = status,
               bookingId = bidOpt,
               reservationType = rTypeOpt,
               eventName = eventNameOpt,
@@ -95,12 +92,14 @@ final class InMemoryBookingCalendarQueryService @Inject() (
               endTime = LocalDateTime.of(date, end)
             )
           }
-          StudioRow(id, name, slotViews)
+          StudioRow(StudioId.fromString(id).get, name, slotViews)
         }
 
       BookingCalendarView(
-        usageDate = date,
-        periodOrder = periods.map(_._1),
+        usageDate = CalendarDate
+          .fromLocalDate(date)
+          .getOrElse(throw new IllegalArgumentException("Invalid date")),
+        periodOrder = periods.map(p => PeriodId.fromString(p._1).get),
         rows = rows
       )
     }

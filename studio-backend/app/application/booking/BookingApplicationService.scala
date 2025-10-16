@@ -1,6 +1,6 @@
 package application.booking
 
-import domain.booking.{Booking, BookingId, BookingStatus, StudioId, PeriodId, EventName, ReservationType}
+import domain.booking.{Booking, BookingId, BookingStatus, StudioId, PeriodId, EventName, ReservationType, UsageDate}
 import domain.student.StudentNumber
 import domain.equipment.{EquipmentItem, EquipmentId}
 import infrastructure.booking.BookingRepository
@@ -8,8 +8,11 @@ import java.time.LocalDate
 import scala.concurrent.{ExecutionContext, Future}
 import domain.reservationtype.{ReservationTypeRepository, ReservationTypeCode}
 import javax.inject.{Inject, Singleton}
+import scala.util.{Try, Success, Failure}
 
-/** 予約作成リクエスト
+/** 予約作成リクエスト（DTOとして機能）
+  *
+  * バリデーションはドメイン層に委譲
   */
 case class CreateBookingRequest(
     studioId: String,
@@ -19,71 +22,14 @@ case class CreateBookingRequest(
     members: List[String],
     equipmentItems: List[EquipmentItemRequest],
     eventName: Option[String] // イベント予約の場合のイベント名
-) {
-  /** リクエストのバリデーション
-    */
-  def validate(): Either[String, CreateBookingRequest] = {
-    // 日付の検証
-    val parsedDate = try {
-      java.time.LocalDate.parse(usageDate)
-    } catch {
-      case _: Exception => return Left(s"Invalid date format: $usageDate")
-    }
+)
 
-    // 日付範囲の検証（1週間後まで）
-    val today = java.time.LocalDate.now()
-    val maxDate = today.plusDays(7)
-
-    if (parsedDate.isBefore(today)) {
-      return Left(s"過去の日付は予約できません: $usageDate")
-    }
-    if (parsedDate.isAfter(maxDate)) {
-      return Left(s"1週間後以降の日付は予約できません: $usageDate (最大: $maxDate)")
-    }
-
-    // 予約タイプの検証
-    ReservationType.fromString(reservationType) match {
-      case None => return Left(s"Invalid reservation type: $reservationType")
-      case Some(resType) =>
-        // イベント名の検証
-        eventName match {
-          case Some(_) if resType != ReservationType.EventReservation =>
-            return Left("イベント名はイベント予約の場合のみ指定できます")
-          case None if resType == ReservationType.EventReservation =>
-            return Left("イベント予約の場合はイベント名を指定してください")
-          case _ => // OK
-        }
-    }
-
-    // 備品リクエストの検証
-    equipmentItems.find(_.validate().isLeft) match {
-      case Some(item) =>
-        item.validate() match {
-          case Left(error) => Left(s"備品リクエストエラー: $error")
-          case Right(_) => Right(this) // この行は到達しない
-        }
-      case None =>
-        Right(this)
-    }
-  }
-}
-
+/** 備品リクエスト（DTO）
+  */
 case class EquipmentItemRequest(
     equipmentId: String,
     quantity: Int
-) {
-  /** 備品リクエストのバリデーション
-    */
-  def validate(): Either[String, EquipmentItemRequest] = {
-    if (equipmentId.trim.isEmpty) {
-      Left("備品IDは必須です")
-    } else if (quantity <= 0) {
-      Left("数量は1以上である必要があります")
-    } else {
-      Right(this)
-    }
-  }
-}
+)
 
 /** 予約アプリケーションサービス
   *
@@ -102,52 +48,74 @@ class BookingApplicationService @Inject() (
     */
   def createBooking(request: CreateBookingRequest): Future[Booking] = {
     for {
-      validatedRequest <- validateRequest(request)
-      booking <- createBookingFromRequest(validatedRequest)
+      booking <- createBookingFromRequest(request)
       savedBooking <- saveBookingWithDuplicateCheck(booking)
     } yield savedBooking
   }
 
-  /** リクエストのバリデーション（値オブジェクトに委譲）
+  /** リクエストからドメインオブジェクトを作成（ドメイン層にバリデーションを委譲）
     */
-  private def validateRequest(request: CreateBookingRequest): Future[CreateBookingRequest] = {
-    request.validate() match {
-      case Right(validRequest) => Future.successful(validRequest)
+  private def createBookingFromRequest(request: CreateBookingRequest): Future[Booking] = {
+    val result = for {
+      // 値オブジェクトに変換（各値オブジェクトが自己バリデーション）
+      usageDate <- UsageDate.fromString(request.usageDate)
+      studioId <- StudioId.fromString(request.studioId)
+        .toRight(s"Invalid studio ID: ${request.studioId}")
+      periodId <- PeriodId.fromString(request.period)
+        .toRight(s"Invalid period ID: ${request.period}")
+      reservationType <- ReservationType.fromString(request.reservationType)
+        .toRight(s"Invalid reservation type: ${request.reservationType}")
+
+      // 学生番号リスト（無効な学生番号は除外）
+      members = request.members.flatMap(StudentNumber.fromString)
+
+      // 備品リスト（DTOからドメインオブジェクトに変換、バリデーション付き）
+      equipmentItems <- toEquipmentItems(request.equipmentItems)
+
+      // イベント名（オプション）
+      eventName <- request.eventName match {
+        case Some(name) =>
+          EventName.fromString(name)
+            .toRight(s"Invalid event name: $name")
+            .map(Some(_))
+        case None => Right(None)
+      }
+
+      // ドメインオブジェクトを作成（ビジネスルール検証を含む）
+      booking <- Booking.create(
+        studioId,
+        periodId,
+        usageDate,
+        reservationType,
+        members,
+        equipmentItems,
+        eventName
+      )
+    } yield booking
+
+    // Either を Future に変換
+    result match {
+      case Right(booking) => Future.successful(booking)
       case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
     }
   }
 
-  /** リクエストからドメインオブジェクトを作成
+  /** 備品リクエストをドメインオブジェクトに変換
+    *
+    * DTOからドメインの値オブジェクトへの変換。
+    * バリデーションはドメイン層（EquipmentItem）に完全に委譲。
     */
-  private def createBookingFromRequest(request: CreateBookingRequest): Future[Booking] = {
-    Future {
-      val usageDate = LocalDate.parse(request.usageDate)
-      val studioId = StudioId.fromString(request.studioId).get
-      val periodId = PeriodId.fromString(request.period).get
-      val reservationType = ReservationType.fromString(request.reservationType).get
-
-      val members = request.members.flatMap(StudentNumber.fromString)
-      val equipmentItems = request.equipmentItems.map { item =>
-        EquipmentItem(EquipmentId.fromString(item.equipmentId).get, item.quantity)
-      }
-
-      val eventName = request.eventName.flatMap(EventName.fromString)
-      val now = java.time.LocalDateTime.now()
-      val bookingId = BookingId.generate()
-
-      Booking(
-        bookingId = bookingId,
-        studioId = studioId,
-        period = periodId,
-        usageDate = usageDate,
-        reservationType = reservationType,
-        members = members,
-        equipmentItems = equipmentItems,
-        eventName = eventName,
-        status = BookingStatus.Reserved,
-        createdAt = now,
-        updatedAt = now
-      )
+  private def toEquipmentItems(
+      items: List[EquipmentItemRequest]
+  ): Either[String, List[EquipmentItem]] = {
+    items.foldLeft[Either[String, List[EquipmentItem]]](Right(Nil)) {
+      case (Right(acc), item) =>
+        // ドメイン層のファクトリメソッドで変換（バリデーション含む）
+        EquipmentItem.fromStrings(item.equipmentId, item.quantity) match {
+          case Right(equipmentItem) => Right(acc :+ equipmentItem)
+          case Left(error)          => Left(error)
+        }
+      case (Left(error), _) => Left(error)
     }
   }
 
