@@ -8,7 +8,6 @@ import java.time.LocalDate
 import scala.concurrent.{ExecutionContext, Future}
 import domain.reservationtype.{ReservationTypeRepository, ReservationTypeCode}
 import javax.inject.{Inject, Singleton}
-import scala.util.{Try, Success, Failure}
 
 /** 予約作成リクエスト（DTOとして機能）
   *
@@ -53,14 +52,18 @@ class BookingApplicationService @Inject() (
     } yield savedBooking
   }
 
-  /** リクエストからドメインオブジェクトを作成（ドメイン層にバリデーションを委譲）
+  /** リクエストからドメインオブジェクトを作成
+    *
+    * @param request
+    *   予約作成リクエスト
+    * @return
+    *   作成された予約
     */
   private def createBookingFromRequest(request: CreateBookingRequest): Future[Booking] = {
-    val result = for {
+    val result: Either[String, Booking] = for {
       // 値オブジェクトに変換（各値オブジェクトが自己バリデーション）
       usageDate <- UsageDate.fromString(request.usageDate)
-      studioId <- StudioId.fromString(request.studioId)
-        .toRight(s"Invalid studio ID: ${request.studioId}")
+      studioId <- StudioId.fromString(request.studioId).toRight(s"Invalid studio ID: ${request.studioId}")
       periodId <- PeriodId.fromString(request.period)
         .toRight(s"Invalid period ID: ${request.period}")
       reservationType <- ReservationType.fromString(request.reservationType)
@@ -95,8 +98,8 @@ class BookingApplicationService @Inject() (
 
     // Either を Future に変換
     result match {
-      case Right(booking) => Future.successful(booking)
-      case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
+      case Right(booking)      => Future.successful(booking)
+      case Left(errorMessage)  => Future.failed(new IllegalArgumentException(errorMessage))
     }
   }
 
