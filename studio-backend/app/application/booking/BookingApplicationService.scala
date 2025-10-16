@@ -8,6 +8,7 @@ import java.time.LocalDate
 import scala.concurrent.{ExecutionContext, Future}
 import domain.reservationtype.{ReservationTypeRepository, ReservationTypeCode}
 import javax.inject.{Inject, Singleton}
+import scala.util.{Try, Success, Failure}
 
 /** 予約作成リクエスト（DTOとして機能）
   *
