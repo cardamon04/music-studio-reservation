@@ -69,8 +69,8 @@ class BookingApplicationService @Inject() (
       // 学生番号リスト（無効な学生番号は除外）
       members = request.members.flatMap(StudentNumber.fromString)
 
-      // 備品リスト（バリデーション付き）
-      equipmentItems <- validateEquipmentItems(request.equipmentItems)
+      // 備品リスト（DTOからドメインオブジェクトに変換、バリデーション付き）
+      equipmentItems <- toEquipmentItems(request.equipmentItems)
 
       // イベント名（オプション）
       eventName <- request.eventName match {
@@ -100,26 +100,20 @@ class BookingApplicationService @Inject() (
     }
   }
 
-  /** 備品リクエストのバリデーション
+  /** 備品リクエストをドメインオブジェクトに変換
+    *
+    * DTOからドメインの値オブジェクトへの変換。
+    * バリデーションはドメイン層（EquipmentItem）に完全に委譲。
     */
-  private def validateEquipmentItems(
+  private def toEquipmentItems(
       items: List[EquipmentItemRequest]
   ): Either[String, List[EquipmentItem]] = {
     items.foldLeft[Either[String, List[EquipmentItem]]](Right(Nil)) {
       case (Right(acc), item) =>
-        // 基本的なバリデーション
-        if (item.equipmentId.trim.isEmpty) {
-          Left("備品IDは必須です")
-        } else if (item.quantity <= 0) {
-          Left("数量は1以上である必要があります")
-        } else {
-          // 備品IDの変換
-          EquipmentId.fromString(item.equipmentId) match {
-            case Some(equipmentId) =>
-              Right(acc :+ EquipmentItem(equipmentId, item.quantity))
-            case None =>
-              Left(s"Invalid equipment ID: ${item.equipmentId}")
-          }
+        // ドメイン層のファクトリメソッドで変換（バリデーション含む）
+        EquipmentItem.fromStrings(item.equipmentId, item.quantity) match {
+          case Right(equipmentItem) => Right(acc :+ equipmentItem)
+          case Left(error)          => Left(error)
         }
       case (Left(error), _) => Left(error)
     }
