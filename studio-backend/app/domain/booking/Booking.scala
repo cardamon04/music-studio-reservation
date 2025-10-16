@@ -60,3 +60,56 @@ case class Booking(
     */
   def isCancelled: Boolean = status == BookingStatus.Cancelled
 }
+
+object Booking {
+
+  /** 予約を作成（ビジネスルール検証付き）
+    *
+    * 値オブジェクトに検証を委譲し、ドメインロジックを集約
+    *
+    * @param studioId
+    *   スタジオID
+    * @param period
+    *   時間枠
+    * @param usageDate
+    *   利用日
+    * @param reservationType
+    *   予約タイプ
+    * @param members
+    *   利用学生リスト
+    * @param equipmentItems
+    *   レンタル備品リスト
+    * @param eventName
+    *   イベント名（イベント予約の場合のみ）
+    * @return
+    *   作成された予約またはエラーメッセージ
+    */
+  def create(
+      studioId: StudioId,
+      period: PeriodId,
+      usageDate: UsageDate,
+      reservationType: ReservationType,
+      members: List[StudentNumber],
+      equipmentItems: List[EquipmentItem],
+      eventName: Option[EventName]
+  ): Either[String, Booking] = {
+
+    // 予約タイプが自身のビジネスルールに基づいてイベント名を検証
+    reservationType.validateEventName(eventName).map { _ =>
+      val now = java.time.LocalDateTime.now()
+      Booking(
+        bookingId = BookingId.generate(),
+        studioId = studioId,
+        period = period,
+        usageDate = usageDate.value,
+        reservationType = reservationType,
+        members = members,
+        equipmentItems = equipmentItems,
+        eventName = eventName,
+        status = BookingStatus.Reserved,
+        createdAt = now,
+        updatedAt = now
+      )
+    }
+  }
+}
