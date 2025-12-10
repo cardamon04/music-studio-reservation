@@ -81,7 +81,7 @@ class BookingApplicationService @Inject() (
     */
   private def createBookingFromRequest(request: CreateBookingRequest): Future[Booking] = {
     val result: Either[String, Booking] = for {
-      // 値オブジェクトに変換
+      // 値オブジェクトに変換（各値オブジェクトが自己バリデーション）
       usageDate <- UsageDate.fromString(request.usageDate)
       studioId <- StudioId.fromString(request.studioId).toRight(s"Invalid studio ID: ${request.studioId}")
       periodId <- PeriodId.fromString(request.period)
