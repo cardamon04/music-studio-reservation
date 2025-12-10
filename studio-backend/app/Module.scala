@@ -6,6 +6,7 @@ import infrastructure.equipment.*
 import infrastructure.reservationtype.*
 import infrastructure.student.*
 import infrastructure.period.*
+import domain.booking.*
 import domain.period.*
 import domain.equipment.*
 import domain.reservationtype.*
@@ -37,7 +38,7 @@ class Module extends AbstractModule {
 
   @Provides @Singleton
   def provideQueryService(
-      bookingRepository: InMemoryBookingRepository,
+      bookingRepository: BookingRepository,
       reservationTypeRepository: ReservationTypeRepository,
       ec: ExecutionContext
   ): BookingCalendarQueryService = {
