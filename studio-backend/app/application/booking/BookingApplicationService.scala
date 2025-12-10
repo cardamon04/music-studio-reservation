@@ -3,7 +3,7 @@ package application.booking
 import domain.booking.{Booking, BookingId, BookingStatus, StudioId, PeriodId, EventName, ReservationType, UsageDate}
 import domain.student.StudentNumber
 import domain.equipment.{EquipmentItem, EquipmentId}
-import infrastructure.booking.BookingRepository
+import domain.booking.BookingRepository
 import java.time.LocalDate
 import scala.concurrent.{ExecutionContext, Future}
 import domain.reservationtype.{ReservationTypeRepository, ReservationTypeCode}
@@ -12,7 +12,14 @@ import scala.util.{Try, Success, Failure}
 
 /** 予約作成リクエスト（DTOとして機能）
   *
-  * バリデーションはドメイン層に委譲
+  * @param studioId
+  *   スタジオID
+  * @param period
+  *   時間枠
+  * @param usageDate
+  *   利用日
+  * @param reservationType
+  *   予約タイプ
   */
 case class CreateBookingRequest(
     studioId: String,
@@ -25,6 +32,11 @@ case class CreateBookingRequest(
 )
 
 /** 備品リクエスト（DTO）
+  *
+  * @param equipmentId
+  *   備品ID
+  * @param quantity
+  *   数量
   */
 case class EquipmentItemRequest(
     equipmentId: String,
@@ -34,6 +46,11 @@ case class EquipmentItemRequest(
 /** 予約アプリケーションサービス
   *
   * DDDのアプリケーション層として、予約のビジネスロジックを管理
+  *
+  * @param bookingRepository
+  *   予約リポジトリ
+  * @param reservationTypeRepository
+  *   予約タイプリポジトリ
   */
 @Singleton
 class BookingApplicationService @Inject() (
@@ -43,8 +60,10 @@ class BookingApplicationService @Inject() (
 
   /** 予約を作成
     *
-    * @param request 予約作成リクエスト
-    * @return 作成された予約
+    * @param request
+    *   予約作成リクエスト
+    * @return
+    *   作成された予約
     */
   def createBooking(request: CreateBookingRequest): Future[Booking] = {
     for {
@@ -73,7 +92,7 @@ class BookingApplicationService @Inject() (
       // 学生番号リスト（無効な学生番号は除外）
       members = request.members.flatMap(StudentNumber.fromString)
 
-      // 備品リスト（DTOからドメインオブジェクトに変換、バリデーション付き）
+      // 備品リスト（DTOからドメインオブジェクトに変換）
       equipmentItems <- toEquipmentItems(request.equipmentItems)
 
       // イベント名（オプション）
@@ -85,7 +104,7 @@ class BookingApplicationService @Inject() (
         case None => Right(None)
       }
 
-      // ドメインオブジェクトを作成（ビジネスルール検証を含む）
+      // ドメインオブジェクトを作成
       booking <- Booking.create(
         studioId,
         periodId,
@@ -97,7 +116,6 @@ class BookingApplicationService @Inject() (
       )
     } yield booking
 
-    // Either を Future に変換
     result match {
       case Right(booking)      => Future.successful(booking)
       case Left(errorMessage)  => Future.failed(new IllegalArgumentException(errorMessage))
@@ -106,8 +124,10 @@ class BookingApplicationService @Inject() (
 
   /** 備品リクエストをドメインオブジェクトに変換
     *
-    * DTOからドメインの値オブジェクトへの変換。
-    * バリデーションはドメイン層（EquipmentItem）に完全に委譲。
+    * @param items
+    *   備品リクエストリスト
+    * @return
+    *   ドメインオブジェクトリスト
     */
   private def toEquipmentItems(
       items: List[EquipmentItemRequest]
@@ -124,19 +144,14 @@ class BookingApplicationService @Inject() (
   }
 
   /** 重複チェック付きで予約を保存
+    *
+    * @param booking
+    *   予約
+    * @return
+    *   保存された予約
     */
   private def saveBookingWithDuplicateCheck(booking: Booking): Future[Booking] = {
     for {
-      // 同じスタジオ・時間枠の重複チェック
-      existingStudioBooking <- bookingRepository.findByDateStudioPeriod(booking.usageDate, booking.studioId, booking.period)
-      _ <- existingStudioBooking match {
-        case Some(existing) if existing.isValid =>
-          Future.failed(new IllegalStateException(
-            s"予約が既に存在します: 日付=${booking.usageDate}, スタジオ=${booking.studioId.value}, 時間枠=${booking.period.value}"
-          ))
-        case _ => Future.successful(())
-      }
-
       // 学生の重複チェック（同じ時間枠で他のスタジオに予約していないか）
       studentConflicts <- Future.sequence(
         booking.members.map { studentNumber =>

@@ -1,0 +1,20 @@
+# Build/IDE artifacts (common)
+.bloop/
+.metals/
+.idea/
+.vscode/
+.g8/
+target/
+**/target/
+
+# Node/Frontend artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Misc
+.classpath
+.project
+.settings/
+RUNNING_PID

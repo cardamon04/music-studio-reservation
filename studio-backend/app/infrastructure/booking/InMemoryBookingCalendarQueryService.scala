@@ -8,6 +8,7 @@ import application.booking.{
 }
 import domain.booking.{
   Booking,
+  BookingRepository,
   BookingStatus,
   BookingId,
   StudioId,
@@ -24,7 +25,7 @@ import javax.inject.{Inject, Singleton}
 
 @Singleton
 final class InMemoryBookingCalendarQueryService @Inject() (
-    bookingRepository: InMemoryBookingRepository,
+    bookingRepository: BookingRepository,
     reservationTypeRepository: ReservationTypeRepository
 )(implicit ec: ExecutionContext)
     extends BookingCalendarQueryService {

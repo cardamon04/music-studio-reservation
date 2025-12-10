@@ -4,7 +4,10 @@
     <div class="mobile-view">
       <div v-for="studio in studios" :key="studio" class="studio-card">
         <div class="studio-header" @click="toggleStudio(studio)">
-          <h3 class="studio-name">{{ studio }}</h3>
+          <div class="studio-info">
+            <h3 class="studio-name">{{ studio }}</h3>
+            <div class="studio-subtitle">スタジオ</div>
+          </div>
           <div class="toggle-icon" :class="{ 'expanded': expandedStudios.has(studio) }">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6,9 12,15 18,9"></polyline>
@@ -114,7 +117,7 @@
     import { ref, reactive, computed } from 'vue';
     import type { PeriodTime } from '@/api/periodTimeApi';
     
-    type UiStatus = "空" | "予約済" | "使用中" | "キャンセル";
+    type UiStatus = "空" | "予約済み" | "使用中" | "予約キャンセル";
     type Cell = {
       status: UiStatus;
       bookingId?: string;
@@ -217,11 +220,11 @@
       switch (s) {
         case "空":
           return "empty";
-        case "予約済":
+        case "予約済み":
           return "reserved";
         case "使用中":
           return "in-use";
-        case "キャンセル":
+        case "予約キャンセル":
           return "cancelled";
         default:
           return "empty";
@@ -241,6 +244,7 @@
 
 .mobile-studio-grid {
   width: 100%;
+  padding: 0 1rem;
 }
 
 .studio-card {
@@ -249,6 +253,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 1rem;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all var(--transition-normal);
+}
+
+.studio-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .studio-header {

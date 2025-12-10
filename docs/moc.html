@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>予約状況モック</title>
+  <style>
+    /* ===== Design Tokens ===== */
+    :root{
+      --bg:#F3F4F6;        /* Gray-100 */
+      --panel:#FFFFFF;
+      --text:#111827;      /* Gray-900 */
+      --muted:#6B7280;     /* Gray-500 */
+      --border:#E5E7EB;    /* Gray-200 */
+      --shadow:0 6px 16px rgba(0,0,0,.06);
+
+      --primary:#3B82F6;   /* Blue-500 */
+      --ok:#10B981;        /* Green-500 */
+      --busy:#3B82F6;      /* Blue-500 */
+      --warn:#FBBF24;      /* Amber-400 */
+      --cancel:#9CA3AF;    /* Gray-400 */
+
+      --radius-lg:16px;
+      --radius-md:12px;
+      --radius-sm:8px;
+
+      --space-1:4px;
+      --space-2:8px;
+      --space-3:12px;
+      --space-4:16px;
+      --space-5:20px;
+      --space-6:24px;
+    }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.4;
+    }
+    .container{
+      max-width: 480px; /* スマホ中心、タブレットでもセンターに */
+      margin: 0 auto;
+      padding: var(--space-5) var(--space-4) var(--space-6);
+    }
+
+    /* ===== Header ===== */
+    .header{
+      text-align: center;
+      margin-bottom: var(--space-4);
+    }
+    .title{
+      font-weight: 700;
+      font-size: 20px;
+      margin: 0 0 var(--space-3);
+    }
+    .datebar{
+      display:inline-flex;
+      align-items:center;
+      gap: var(--space-2);
+      padding: 10px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      font-weight: 600;
+    }
+    .datebar .icon{
+      font-size: 18px;
+      color: var(--muted);
+    }
+
+    /* ===== Studio Card ===== */
+    .studio{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: var(--space-4);
+      margin-top: var(--space-4);
+    }
+    .studio h2{
+      margin: 0 0 var(--space-3);
+      font-size: 18px;
+    }
+
+    /* ===== Horizontal Period List ===== */
+    .periods{
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 120px; /* 1カードの基本幅 */
+      gap: var(--space-3);
+      overflow-x: auto;
+      padding-bottom: var(--space-2);
+      scroll-snap-type: x mandatory;
+      scrollbar-width: thin; /* Firefox */
+    }
+    .periods::-webkit-scrollbar{ height: 8px; }
+    .periods::-webkit-scrollbar-thumb{
+      background: #D1D5DB; border-radius: 999px;
+    }
+
+    /* ===== Period Card ===== */
+    .period{
+      scroll-snap-align: start;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: var(--space-2);
+      min-height: 92px;
+    }
+    .p-head{
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:700;
+    }
+    .p-time{ color: var(--muted); font-size: 12px; }
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size: 12px; font-weight: 700; color:#fff;
+      border-radius: 999px; padding: 4px 8px;
+    }
+    .is-free{ background: var(--ok); }
+    .is-busy{ background: var(--busy); }
+    .is-reserved{ background: var(--warn); color:#111827; } /* 黄は黒字のほうが読みやすい */
+    .is-canceled{ background: var(--cancel); }
+
+    /* ===== Footer Button ===== */
+    .footer{
+      position: sticky; bottom: 0; margin-top: var(--space-5);
+      background: linear-gradient(to top, var(--bg), rgba(243,244,246,0));
+      padding-top: var(--space-4);
+    }
+    .btn-primary{
+      width: 100%;
+      border: none;
+      border-radius: var(--radius-md);
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+    }
+    .btn-primary:active{ transform: translateY(1px); }
+
+    /* ===== Small helpers ===== */
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+
+    /* ===== (Optional) Dark-like tweak via prefers-color-scheme ===== */
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b0e13; --panel:#12161c; --text:#e6e9ef; --muted:#98a2b3; --border:#1f2a37;
+        --shadow:0 6px 16px rgba(0,0,0,.35);
+      }
+      .periods::-webkit-scrollbar-thumb{ background:#2a3441; }
+      .is-reserved{ color:#0b0e13; } /* 黄は暗色背景でも黒字で可読 */
+    }
+  </style>
+</head>
+<body>
+  <main class="container" role="main" aria-labelledby="page-title">
+    <!-- Header -->
+    <header class="header">
+      <h1 id="page-title" class="title">予約状況</h1>
+      <div class="datebar" role="group" aria-label="日付">
+        <span class="icon" aria-hidden="true">📅</span>
+        <span>2025/10/07（火）</span>
+      </div>
+    </header>
+
+    <!-- Studio A -->
+    <section class="studio" aria-labelledby="studio-a">
+      <h2 id="studio-a">Studio A</h2>
+      <div class="periods" role="list" aria-label="時間枠">
+        <!-- P1 空き -->
+        <article class="period" role="listitem" aria-label="P1 09:00-10:30 空き">
+          <div class="p-head">
+            <span>P1</span>
+            <span class="badge is-free">空き</span>
+          </div>
+          <div class="p-time">09:00–10:30</div>
+        </article>
+
+        <!-- P2 予約済み -->
+        <article class="period" role="listitem" aria-label="P2 10:45-12:15 予約済み">
+          <div class="p-head">
+            <span>P2</span>
+            <span class="badge is-reserved">予約済み</span>
+          </div>
+          <div class="p-time">10:45–12:15</div>
+        </article>
+
+        <!-- P3 使用中 -->
+        <article class="period" role="listitem" aria-label="P3 13:00-14:30 使用中">
+          <div class="p-head">
+            <span>P3</span>
+            <span class="badge is-busy">使用中</span>
+          </div>
+          <div class="p-time">13:00–14:30</div>
+        </article>
+
+        <!-- P4 キャンセル -->
+        <article class="period" role="listitem" aria-label="P4 14:45-16:15 キャンセル">
+          <div class="p-head">
+            <span>P4</span>
+            <span class="badge is-canceled">キャンセル</span>
+          </div>
+          <div class="p-time">14:45–16:15</div>
+        </article>
+
+        <!-- P5 空き -->
+        <article class="period" role="listitem" aria-label="P5 16:30-18:00 空き">
+          <div class="p-head">
+            <span>P5</span>
+            <span class="badge is-free">空き</span>
+          </div>
+          <div class="p-time">16:30–18:00</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Studio B -->
+    <section class="studio" aria-labelledby="studio-b">
+      <h2 id="studio-b">Studio B</h2>
+      <div class="periods" role="list" aria-label="時間枠">
+        <article class="period" role="listitem" aria-label="P1 09:00-10:30 空き">
+          <div class="p-head"><span>P1</span><span class="badge is-free">空き</span></div>
+          <div class="p-time">09:00–10:30</div>
+        </article>
+        <article class="period" role="listitem" aria-label="P2 10:45-12:15 空き">
+          <div class="p-head"><span>P2</span><span class="badge is-free">空き</span></div>
+          <div class="p-time">10:45–12:15</div>
+        </article>
+        <article class="period" role="listitem" aria-label="P3 13:00-14:30 使用中">
+          <div class="p-head"><span>P3</span><span class="badge is-busy">使用中</span></div>
+          <div class="p-time">13:00–14:30</div>
+        </article>
+        <article class="period" role="listitem" aria-label="P4 14:45-16:15 予約済み">
+          <div class="p-head"><span>P4</span><span class="badge is-reserved">予約済み</span></div>
+          <div class="p-time">14:45–16:15</div>
+        </article>
+        <article class="period" role="listitem" aria-label="P5 16:30-18:00 空き">
+          <div class="p-head"><span>P5</span><span class="badge is-free">空き</span></div>
+          <div class="p-time">16:30–18:00</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Footer CTA -->
+    <div class="footer" role="contentinfo">
+      <button class="btn-primary" type="button" aria-label="予約する">予約する</button>
+    </div>
+  </main>
+</body>
+</html>

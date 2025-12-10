@@ -42,7 +42,8 @@ final case class SlotView(
 
 object SlotView {
 
-  // カスタムJSON形式（値オブジェクトを文字列にシリアライズ）
+  /** スロットビューのJSON形式（値オブジェクトを文字列にシリアライズ）
+    */
   implicit val slotViewWrites: OWrites[SlotView] = new OWrites[SlotView] {
     def writes(slot: SlotView): JsObject = Json.obj(
       "periodId" -> slot.periodId.value,
