@@ -10,7 +10,7 @@
           </svg>
         </button>
       </div>
-      
+
       <div class="dialog-body">
         <div class="message-content">
           <div v-if="icon" class="message-icon" :class="iconClass">
@@ -22,7 +22,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="dialog-footer">
         <button
           v-for="button in buttons"
@@ -247,6 +247,7 @@ const InfoIcon = {
   color: #374151;
   margin: 0 0 8px 0;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .details {

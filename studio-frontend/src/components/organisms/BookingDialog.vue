@@ -279,6 +279,16 @@ function removeStudent(index: number) {
   selectedStudents.value.splice(index, 1);
 }
 
+// スタジオ名からスタジオIDを取得する関数
+function getStudioIdFromName(studioName: string): string {
+  const studioMapping: Record<string, string> = {
+    'Aスタ': 'A',
+    'Bスタ': 'B', 
+    'Cスタ': 'C'
+  };
+  return studioMapping[studioName] || studioName;
+}
+
 function getQuantity(equipmentId: string): number {
   return equipmentQuantities.value[equipmentId] || 0;
 }
@@ -307,7 +317,7 @@ function submitBooking() {
     .map(([equipmentId, quantity]) => ({ equipmentId, quantity }));
 
   const booking: CreateBookingRequest = {
-    studioId: props.selectedStudio,
+    studioId: getStudioIdFromName(props.selectedStudio),
     period: props.selectedPeriod,
     usageDate: props.usageDate,
     reservationType: reservationType.value,

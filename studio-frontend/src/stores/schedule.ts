@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { fetchBookingCalendar } from "@/lib/apiCalendar";
 import type { PeriodId, BookingCalendarView } from "@/lib/types";
 
-type UiStatus = "空" | "予約済" | "使用中" | "キャンセル";
+type UiStatus = "空" | "予約済み" | "使用中" | "予約キャンセル";
 type Cell = { 
   status: UiStatus; 
   bookingId?: string; 
@@ -66,10 +66,10 @@ function mapStatusToUi(status: string): UiStatus {
   switch (status) {
     case "空": return "空";
     case "予約済み":
-    case "予約確定": return "予約済";
+    case "予約確定": return "予約済み";
     case "使用中": return "使用中";
-    case "予約キャンセル": return "キャンセル";
-    default: return "予約済"; // 想定外は安全側で予約済扱い
+    case "予約キャンセル": return "予約キャンセル";
+    default: return "予約済み"; // 想定外は安全側で予約済扱い
   }
 }
 

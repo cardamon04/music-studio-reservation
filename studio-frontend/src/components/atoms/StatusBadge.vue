@@ -1,33 +1,42 @@
-<!-- src/components/atoms/StatusBadge.vue -->
 <template>
-    <span :class="klass">{{ text }}</span>
-  </template>
+  <span
+    :class="[
+      'inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium leading-none select-none',
+      colorClass,
+    ]"
+    role="status"
+    :aria-label="ariaLabel"
+  >
+    <slot />
+  </span>
+</template>
 
-  <script lang="ts">
-  import { defineComponent, computed } from "vue";
+<script setup lang="ts">
+import { computed } from 'vue';
 
-  export default defineComponent({
-    name: "StatusBadge",
-    props: {
-      text: { type: String, required: true }
-    },
-    setup(props) {
-      // シンプルな色分け（デザインは後で調整）
-      const klass = computed(() => {
-        switch (props.text) {
-          case "空": return "px-2 py-1 rounded bg-gray-200";
-          case "予約済み": return "px-2 py-1 rounded bg-yellow-200";
-          case "予約確定": return "px-2 py-1 rounded bg-blue-200";
-          case "使用中": return "px-2 py-1 rounded bg-green-200";
-          case "予約キャンセル": return "px-2 py-1 rounded bg-red-200";
-          default: return "px-2 py-1 rounded bg-gray-200";
-        }
-      });
-      return { klass };
-    }
-  });
-  </script>
+const props = defineProps<{
+  status: 'available' | 'booked' | 'in_use' | 'canceled';
+}>();
 
-  <style scoped>
-  /* 必要なら細かい調整 */
-  </style>
+const colorClass = computed(() => {
+  switch (props.status) {
+    case 'available':
+      return 'bg-green-500 text-white';
+    case 'booked':
+      return 'bg-amber-400 text-white';
+    case 'in_use':
+      return 'bg-blue-500 text-white';
+    case 'canceled':
+      return 'bg-gray-400 text-white';
+  }
+});
+
+const ariaLabel = computed(() => {
+  switch (props.status) {
+    case 'available': return '空き';
+    case 'booked': return '予約済み';
+    case 'in_use': return '使用中';
+    case 'canceled': return 'キャンセル';
+  }
+});
+</script>
