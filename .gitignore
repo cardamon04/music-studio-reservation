@@ -18,3 +18,7 @@ dist/
 .project
 .settings/
 RUNNING_PID
+
+# Browser test output
+playwright-report/
+test-results/

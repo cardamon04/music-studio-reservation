@@ -4,13 +4,15 @@
     :class="{ 'is-clickable': isClickable }"
     role="listitem" 
     :aria-label="`${slotData.label} ${slotData.timeRange} ${statusLabel}`"
-    @click="handleClick"
   >
     <div class="p-head">
       <span>{{ slotData.label }}</span>
       <span class="badge" :class="badgeClass">{{ statusLabel }}</span>
     </div>
     <div class="p-time">{{ slotData.timeRange }}</div>
+    <button v-if="isClickable" type="button" class="slot-select"
+      :aria-label="`${slotData.label} ${slotData.timeRange} 空き枠を選ぶ`"
+      @click="handleClick">空き枠を選ぶ</button>
     <div v-if="slotData.status !== 'available'" class="p-reservation-info">
       <span v-if="slotData.reservationType" class="reservation-type">{{ getReservationTypeLabel(slotData.reservationType) }}</span>
       <span v-if="slotData.eventName" class="event-name">{{ slotData.eventName }}</span>
@@ -85,7 +87,25 @@ function handleClick() {
 }
 
 .period.is-clickable {
+  border-color: #047857;
+}
+
+.slot-select {
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid #047857;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #065f46;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.slot-select:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
 }
 
 .period.is-clickable:hover {

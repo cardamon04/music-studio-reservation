@@ -17,11 +17,12 @@
 | `studio-frontend` | ロックファイルに沿った依存導入 | `npm ci` |
 | `studio-frontend` | 開発サーバー起動 | `npm run dev` |
 | `studio-frontend` | ビルド | `npm run build` |
+| `studio-frontend` | EdgeでUI回帰テスト | `npm run test:ui` |
 | `studio-backend` | 開発サーバー起動 | `sbt run` |
 | `studio-backend` | コンパイル | `sbt compile` |
 | `studio-backend` | テスト | `sbt test` |
 
-フロントエンドは `localhost:5173`、バックエンドは `localhost:9000` を使い、Vite が `/api` を転送します。現在、フロントエンドのテスト・型検査・lint用スクリプトはありません。`npm run build` の成功を型検査の成功として扱わないでください。
+フロントエンドは `localhost:5173`、バックエンドは `localhost:9000` を使い、Vite が `/api` を転送します。UIテストはEdgeを使い、127.0.0.1:5174で起動したViteのAPIを架空データに置き換えます。現在、フロントエンドの型検査・lint用スクリプトはありません。`npm run build` の成功を型検査の成功として扱わないでください。
 
 ## 作業に応じて読む資料
 
