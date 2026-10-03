@@ -3,6 +3,7 @@
     <!-- Header -->
     <header class="header">
       <h1 id="page-title" class="title">予約状況</h1>
+      <p class="selection-help">日付を選び、希望する時間の「空き枠を選ぶ」を押してください。</p>
       <div class="datebar" role="group" aria-label="日付選択">
         <span class="icon" aria-hidden="true">📅</span>
         <DatePicker
@@ -17,17 +18,17 @@
     <!-- Content -->
     <div class="container">
       <!-- ローディング状態 -->
-      <div v-if="loading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>データを読み込み中...</p>
+      <div v-if="loading" class="loading-state" role="status">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>予約状況を読み込んでいます…</p>
       </div>
 
       <!-- エラー状態 -->
-      <div v-else-if="error" class="error-state">
-        <div class="error-icon">⚠️</div>
-        <p>{{ error }}</p>
+      <div v-else-if="error" class="error-state" role="alert">
+        <p>予約状況を読み込めませんでした。</p>
+        <p>接続を確認して、もう一度読み込んでください。</p>
         <button class="btn-retry" type="button" @click="fetchStudiosData">
-          再試行
+          もう一度読み込む
         </button>
       </div>
 
@@ -47,12 +48,6 @@
         </div>
       </div>
 
-      <!-- Footer CTA -->
-      <div class="footer" role="contentinfo">
-        <button class="btn-primary" type="button" @click="toReserve" aria-label="予約する">
-          予約する
-        </button>
-      </div>
     </div>
 
     <!-- 予約ダイアログ -->
@@ -80,8 +75,7 @@
 /**
  * スマホ優先の予約状況ページ
  * - Atomic DesignのOrganisms（StudioCard）を使用
- * - API接続前はモックデータで動作
- * - ルーター遷移は toReserve() でフック
+ * - 日付ごとの空き枠から予約入力を開く
  */
 
 import { onMounted, ref, computed } from 'vue';
@@ -112,6 +106,7 @@ const maxSelectableDate = computed(() => {
 const studios = ref<Studio[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+let calendarRequest = 0;
 
 // ▼ 予約ダイアログの状態
 const showReservationDialog = ref(false);
@@ -134,6 +129,7 @@ const messageDialog = ref({
 
 // ▼ データ取得関数
 async function fetchStudiosData() {
+  const request = ++calendarRequest;
   loading.value = true;
   error.value = null;
   
@@ -143,6 +139,7 @@ async function fetchStudiosData() {
     console.log('対象日付:', dateString);
     
     const calendarData = await fetchBookingCalendar(dateString);
+    if (request !== calendarRequest) return;
     console.log('APIレスポンス:', calendarData);
     
     studios.value = transformBookingCalendarToStudios(calendarData);
@@ -154,12 +151,13 @@ async function fetchStudiosData() {
       console.log(`${studio.name}:`, studio.periods.map(p => `${p.id}=${p.status}`).join(', '));
     });
   } catch (err) {
+    if (request !== calendarRequest) return;
     console.error('Failed to fetch studios data:', err);
     error.value = err instanceof Error ? err.message : 'データの取得に失敗しました';
     // エラー時は空の配列を設定
     studios.value = [];
   } finally {
-    loading.value = false;
+    if (request === calendarRequest) loading.value = false;
   }
 }
 
@@ -198,11 +196,7 @@ onMounted(() => {
   fetchStudiosData();
 });
 
-function toReserve() {
-  // 予約フローへ遷移（Router導入時に差し替え）
-  // router.push({ name: 'reserve', query: { date: selectedDate.value } });
-  alert(`予約フローに進みます（${selectedDate.value}）`);
-}
+
 
 // ▼ 予約ダイアログを開く
 function openReservationDialog(studioId: string, studioName: string, periodLabel: string, timeRange: string) {
@@ -298,7 +292,7 @@ function formatDateForDisplay(date: Date): string {
 
 <style scoped>
 /* ===== Design Tokens ===== */
-:root {
+.schedule-page {
   --bg: #F3F4F6;        /* Gray-100 */
   --panel: #FFFFFF;
   --text: #111827;      /* Gray-900 */
@@ -306,11 +300,11 @@ function formatDateForDisplay(date: Date): string {
   --border: #E5E7EB;    /* Gray-200 */
   --shadow: 0 6px 16px rgba(0,0,0,.06);
 
-  --primary: #3B82F6;   /* Blue-500 */
-  --ok: #10B981;        /* Green-500 */
-  --busy: #3B82F6;      /* Blue-500 */
+  --primary: #1D4ED8;   /* Blue-500 */
+  --ok: #047857;        /* Green-500 */
+  --busy: #1D4ED8;      /* Blue-500 */
   --warn: #FBBF24;      /* Amber-400 */
-  --cancel: #9CA3AF;    /* Gray-400 */
+  --cancel: #4B5563;    /* Gray-400 */
 
   --radius-lg: 16px;
   --radius-md: 12px;
@@ -326,6 +320,7 @@ function formatDateForDisplay(date: Date): string {
 
 /* ===== Base ===== */
 .schedule-page {
+  color-scheme: light;
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   color: var(--text);
@@ -341,7 +336,9 @@ function formatDateForDisplay(date: Date): string {
 }
 
 /* ===== Header ===== */
+.selection-help { margin: 8px auto 16px; max-width: 32em; padding: 0 16px; color: #4b5563; font-size: 14px; line-height: 1.6; }
 .header {
+  padding-top: 20px;
   text-align: center;
   margin-bottom: var(--space-4);
 }
@@ -373,32 +370,6 @@ function formatDateForDisplay(date: Date): string {
   color: var(--muted);
 }
 
-/* ===== Footer Button ===== */
-.footer {
-  position: sticky; 
-  bottom: 0; 
-  margin-top: var(--space-5);
-  background: linear-gradient(to top, var(--bg), rgba(243,244,246,0));
-  padding-top: var(--space-4);
-}
-
-.btn-primary {
-  width: 100%;
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
-  cursor: pointer;
-}
-
-.btn-primary:active { 
-  transform: translateY(1px); 
-}
-
 /* ===== Loading, Error, Empty States ===== */
 .loading-state, .error-state, .empty-state {
   text-align: center;
@@ -427,6 +398,7 @@ function formatDateForDisplay(date: Date): string {
 }
 
 .btn-retry {
+  min-height: 44px;
   margin-top: var(--space-3, 12px);
   padding: var(--space-2, 8px) var(--space-4, 16px);
   background: var(--primary, #3B82F6);
@@ -437,19 +409,12 @@ function formatDateForDisplay(date: Date): string {
   cursor: pointer;
 }
 
+.btn-retry:focus-visible { outline: 3px solid #111827; outline-offset: 3px; }
 .btn-retry:hover {
   background: #2563eb;
 }
 
-/* ===== Dark mode support ===== */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0e13; 
-    --panel: #12161c; 
-    --text: #e6e9ef; 
-    --muted: #98a2b3; 
-    --border: #1f2a37;
-    --shadow: 0 6px 16px rgba(0,0,0,.35);
-  }
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation: none; }
 }
 </style>

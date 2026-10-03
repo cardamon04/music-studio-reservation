@@ -48,10 +48,8 @@ function handleSlotClick(slot: PeriodSlot) {
 /* ===== Horizontal Period List ===== */
 .periods {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 120px; /* 1カードの基本幅 */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
   gap: var(--space-3, 12px);
-  overflow-x: auto;
   padding-bottom: var(--space-2, 8px);
   scroll-snap-type: x mandatory;
   scrollbar-width: thin; /* Firefox */
