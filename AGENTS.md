@@ -6,7 +6,6 @@
 
 - `studio-frontend/`: Vue・TypeScript・Vite。依存関係と実行コマンドは `package.json`、インストールする版は `package-lock.json` を参照します。
 - `studio-backend/`: Scala・Play。ビルドには sbt を使います。版は `build.sbt`、`project/plugins.sbt`、`project/build.properties` を参照します。`build.sc` は Scala の版が異なる Mill 用定義なので、sbt の設定と混同しないでください。
-- `studio-frontend_bak/`: バックアップ。通常の機能変更は `studio-frontend/` で行ってください。
 - `DB/script/CREATE_TABLE/`: 手動実行するSQL。現在の保存先は `studio-backend/app/Module.scala` でメモリ上の実装に結び付けられており、SQLを実行してもDB保存には切り替わりません。
 
 ## 実行コマンド
