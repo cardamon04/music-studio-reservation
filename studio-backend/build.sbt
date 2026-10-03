@@ -47,9 +47,3 @@ javaOptions ++= Seq(
   "-Dfile.encoding=UTF-8",
   "-Dconsole.encoding=UTF-8"
 )
-
-// Scalaコンパイラオプション
-scalacOptions ++= Seq(
-  "-encoding",
-  "UTF-8"
-)

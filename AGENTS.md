@@ -5,7 +5,7 @@
 ## 作業対象と設定
 
 - `studio-frontend/`: Vue・TypeScript・Vite。依存関係と実行コマンドは `package.json`、インストールする版は `package-lock.json` を参照します。
-- `studio-backend/`: Scala・Play。ビルドには sbt を使います。版は `build.sbt`、`project/plugins.sbt`、`project/build.properties` を参照します。`build.sc` は Scala の版が異なる Mill 用定義なので、sbt の設定と混同しないでください。
+- `studio-backend/`: Scala・Play。ビルド方式は sbt に統一しています。版は `build.sbt`、`project/plugins.sbt`、`project/build.properties` を参照します。
 - `DB/script/CREATE_TABLE/`: 手動実行するSQL。現在の保存先は `studio-backend/app/Module.scala` でメモリ上の実装に結び付けられており、SQLを実行してもDB保存には切り替わりません。
 
 ## 実行コマンド
@@ -18,6 +18,7 @@
 | `studio-frontend` | 開発サーバー起動 | `npm run dev` |
 | `studio-frontend` | ビルド | `npm run build` |
 | `studio-backend` | 開発サーバー起動 | `sbt run` |
+| `studio-backend` | コンパイル | `sbt compile` |
 | `studio-backend` | テスト | `sbt test` |
 
 フロントエンドは `localhost:5173`、バックエンドは `localhost:9000` を使い、Vite が `/api` を転送します。現在、フロントエンドのテスト・型検査・lint用スクリプトはありません。`npm run build` の成功を型検査の成功として扱わないでください。

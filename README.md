@@ -31,7 +31,7 @@ npm run dev
 
 ## 開発時に知っておくこと
 
-- バックエンドの標準ビルド定義は sbt (`studio-backend/build.sbt`) です。`studio-backend/build.sc` にも Mill 用の定義がありますが、Scalaの版が sbt 定義と異なります。どちらを正式採用するか決まるまでは、記載済みの sbt 手順を使ってください。
+- バックエンドのビルドは sbt (`studio-backend/build.sbt`) に統一しています。sbtの版は `studio-backend/project/build.properties` に従います。
 - 設計資料間の主要な相違は確認・反映済みです。[要件定義](docs/要件定義.md)で合意した仕様と現在の実装との差を確認してください。[未確定事項](docs/要件定義.md#pending-decisions)には実装前に具体化する設計事項を残しています。
 - フロントエンドには現在、ビルド用の `build` スクリプトがあります。型検査・静的解析や自動実行の設定は、今後整える項目です。
 

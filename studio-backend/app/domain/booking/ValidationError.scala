@@ -1,7 +1,5 @@
 package domain.booking
 
-package domain.booking
-
 /** バリデーションエラーの基底型
   */
 sealed trait ValidationError {
