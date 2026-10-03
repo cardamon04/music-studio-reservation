@@ -2,7 +2,10 @@
 .bloop/
 .metals/
 .idea/
-.vscode/
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .g8/
 target/
 **/target/
