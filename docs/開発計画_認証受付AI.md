@@ -18,6 +18,7 @@
 | 受付 | 本人確認、Check-in/Check-out、無断キャンセル、備品の貸出・返却。REQ-024・026・029と受付API契約に従う | 認証、備品の引当期間、早期返却時の在庫、永続化 | [#22](https://github.com/cardamon04/music-studio-reservation/issues/22)、[#25](https://github.com/cardamon04/music-studio-reservation/issues/25) |
 | AWSからのAPI呼び出し | 将来の呼び出しに対応する | システム独自の権限か利用者の代理か、接続先、操作範囲 | [#23](https://github.com/cardamon04/music-studio-reservation/issues/23) |
 | AIチャット | 利用者の要望に応じてAPI経由で操作する機能を追加する | 対象データ、CRUDの意味、実行前確認、チャットの配置、モデル・会話データの扱い | [#24](https://github.com/cardamon04/music-studio-reservation/issues/24) |
+| 備品数量の上限 | 貸出累計は予約数量以内、返却累計は貸出累計以内 | 既存の`Quantity`が持つ100個上限の採否 | [#26](https://github.com/cardamon04/music-studio-reservation/issues/26) |
 
 質問は各Issueで扱います。背景と確認の意図、選択肢、回答で変わる実装を記載しています。テストリストやRed・Green・Refactorの過程で疑問が生じた場合も、既存の回答を確認した上でIssueに追加し、回答に依存する部分を保留します。
 
@@ -32,6 +33,8 @@ OAuth 2.0はアクセス権を扱い、OpenID Connectはその上で利用者の
 貸出明細の数量ルールは、認証方式や保存先に依存しません。予約で確保した数を超える貸出、貸出済みで未返却の数を超える返却、同じ予約への返却済み数量の再貸出を拒否する振る舞いを、ドメイン層で小さく実装します。根拠は受付API契約の`0 <= returnedQuantity <= checkedOutQuantity <= reservedQuantity`です。
 
 この段階では、受付APIや画面から呼び出せる完成機能とは扱いません。予約状態・業務日・認証済みTA・操作ID・監査・保存の整合性は、後続の受付ユースケースで確認する必要があります。
+
+テストリストの作成中に、既存`Quantity`の100個上限と受付APIの「正の整数」という記述の差を確認しました。上限の変更と既存型への接続は#26の回答待ちです。数量の累計計算にはこの上限を持ち込まず、予約作成側の既存`Quantity`は変更しません。
 
 ### 設計提案
 
