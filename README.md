@@ -29,8 +29,6 @@ npm run dev
 - バックエンド: Scala 3.4.3、Play 3.0.9、sbt 1.11.6 (`studio-backend`)
 - DB用SQL: `DB/script/CREATE_TABLE/`。バックエンドの現在のリポジトリ実装はメモリ上にあり、このSQL群はアプリケーションの起動時には使われません。アプリを再起動すると予約などのデータは保持されません。
 
-`studio-frontend_bak` は現在の起動手順では使いません。バックアップとしてリポジトリに残っています。
-
 ## 開発時に知っておくこと
 
 - バックエンドの標準ビルド定義は sbt (`studio-backend/build.sbt`) です。`studio-backend/build.sc` にも Mill 用の定義がありますが、Scalaの版が sbt 定義と異なります。どちらを正式採用するか決まるまでは、記載済みの sbt 手順を使ってください。
