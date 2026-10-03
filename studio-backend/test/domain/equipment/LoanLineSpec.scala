@@ -74,5 +74,75 @@ class LoanLineSpec extends AnyWordSpec with Matchers {
       line.checkedOutQuantity mustBe 2
       line.returnedQuantity mustBe 0
     }
+
+    "reject a negative reserved quantity when the line is created" in {
+      intercept[IllegalArgumentException] {
+        LoanLine(bookingId, equipmentId, reservedQuantity = -1)
+      }
+    }
+
+    "prevent callers from constructing or copying arbitrary cumulative quantities" in {
+      assertDoesNotCompile("""
+        domain.equipment.LoanLine(
+          domain.booking.BookingId("550e8400-e29b-41d4-a716-446655440401"),
+          domain.equipment.EquipmentId("550e8400-e29b-41d4-a716-446655440101"),
+          3, -1, 4)
+      """)
+      assertDoesNotCompile("""
+        new domain.equipment.LoanLine(
+          domain.booking.BookingId("550e8400-e29b-41d4-a716-446655440401"),
+          domain.equipment.EquipmentId("550e8400-e29b-41d4-a716-446655440101"),
+          3, 4, 0)
+      """)
+      assertDoesNotCompile("""
+        domain.equipment.LoanLine(
+          domain.booking.BookingId("550e8400-e29b-41d4-a716-446655440401"),
+          domain.equipment.EquipmentId("550e8400-e29b-41d4-a716-446655440101"),
+          3).copy(checkedOutQuantity = -1)
+      """)
+    }
+
+    "keep returned quantities from increasing a fully lent reservation's capacity" in {
+      val checkedOut = LoanLine(bookingId, equipmentId, 3).checkout(3).toOption.get
+      val returned = checkedOut.returnEquipment(3).toOption.get
+
+      returned.checkout(1).isLeft mustBe true
+      returned.returnEquipment(1).isLeft mustBe true
+      returned.checkedOutQuantity mustBe 3
+      returned.returnedQuantity mustBe 3
+    }
+
+    "reject returns before anything has been lent" in {
+      val line = LoanLine(bookingId, equipmentId, 3)
+
+      line.returnEquipment(1).isLeft mustBe true
+      line.checkedOutQuantity mustBe 0
+      line.returnedQuantity mustBe 0
+    }
+
+    "preserve the zero boundary without permitting a positive movement" in {
+      val line = LoanLine(bookingId, equipmentId, 0)
+
+      line.checkout(1).isLeft mustBe true
+      line.returnEquipment(1).isLeft mustBe true
+      line.reservedQuantity mustBe 0
+      line.checkedOutQuantity mustBe 0
+      line.returnedQuantity mustBe 0
+    }
+
+    "validate differences before adding quantities near the integer limit" in {
+      val first = LoanLine(bookingId, equipmentId, Int.MaxValue).checkout(1).toOption.get
+      first.checkout(Int.MaxValue).isLeft mustBe true
+      val checkedOut = first.checkout(Int.MaxValue - 1).toOption.get
+      val firstReturn = checkedOut.returnEquipment(1).toOption.get
+      firstReturn.returnEquipment(Int.MaxValue).isLeft mustBe true
+      val returned = firstReturn.returnEquipment(Int.MaxValue - 1).toOption.get
+
+      returned.reservedQuantity mustBe Int.MaxValue
+      returned.checkedOutQuantity mustBe Int.MaxValue
+      returned.returnedQuantity mustBe Int.MaxValue
+      returned.checkout(1).isLeft mustBe true
+      returned.returnEquipment(1).isLeft mustBe true
+    }
   }
 }
