@@ -1,9 +1,9 @@
 <template>
-  <div v-if="isVisible" class="dialog-overlay" @click="handleOverlayClick">
+  <ModalDialog :is-visible="isVisible" :label="title" :dismissible="showCloseButton" :fallback-focus="fallbackFocus" @close="close">
     <div class="dialog-content" @click.stop>
       <div class="dialog-header">
-        <h3 class="dialog-title" :class="titleClass">{{ title }}</h3>
-        <button v-if="showCloseButton" @click="close" class="close-button">
+        <h3 class="dialog-title" :class="titleClass" tabindex="-1" autofocus>{{ title }}</h3>
+        <button v-if="showCloseButton" @click="close" class="close-button" aria-label="メッセージを閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -35,11 +35,12 @@
         </button>
       </div>
     </div>
-  </div>
+  </ModalDialog>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import ModalDialog from './ModalDialog.vue';
 
 export interface MessageButton {
   text: string;
@@ -56,6 +57,7 @@ export interface MessageDialogProps {
   type?: 'success' | 'error' | 'warning' | 'info';
   showCloseButton?: boolean;
   buttons?: MessageButton[];
+  fallbackFocus?: HTMLElement;
 }
 
 const emit = defineEmits<{
@@ -103,12 +105,6 @@ const icon = computed(() => {
 
 function close() {
   emit('close');
-}
-
-function handleOverlayClick() {
-  if (props.showCloseButton) {
-    close();
-  }
 }
 
 function handleButtonClick(button: MessageButton) {
@@ -165,20 +161,6 @@ const InfoIcon = {
 </script>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  padding: 1rem;
-}
-
 .dialog-content {
   background: white;
   border-radius: 12px;

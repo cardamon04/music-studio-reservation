@@ -2,7 +2,7 @@
   <main class="schedule-page" role="main" aria-labelledby="page-title">
     <!-- Header -->
     <header class="header">
-      <h1 id="page-title" class="title">予約状況</h1>
+      <h1 id="page-title" ref="pageTitle" class="title" tabindex="-1">予約状況</h1>
       <p class="selection-help">日付を選び、希望する時間の「空き枠を選ぶ」を押してください。</p>
       <div class="datebar" role="group" aria-label="日付選択">
         <span class="icon" aria-hidden="true">📅</span>
@@ -66,6 +66,7 @@
       :title="messageDialog.title"
       :message="messageDialog.message"
       :type="messageDialog.type"
+      :fallback-focus="pageTitle"
       @close="handleMessageDialogClose"
     />
   </main>
@@ -89,6 +90,7 @@ import { transformBookingCalendarToStudios, formatDateForApi } from '@/lib/apiTr
 import { createBooking, type CreateBookingRequest } from '@/api/bookingApi';
 
 // ▼ 選択中の日付（現在の日付を使用）
+const pageTitle = ref<HTMLElement>();
 const selectedDate = ref(new Date());
 
 // ▼ 日付選択の制限（今日から1週間後まで）
