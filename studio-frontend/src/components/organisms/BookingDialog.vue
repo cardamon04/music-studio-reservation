@@ -1,10 +1,10 @@
 <!-- 予約ダイアログコンポーネント -->
 <template>
-  <div v-if="isVisible" class="dialog-overlay" @click="closeDialog">
+  <ModalDialog :is-visible="isVisible" label="スタジオ予約" @close="closeDialog">
     <div class="dialog-content" @click.stop>
       <div class="dialog-header">
-        <h2 class="dialog-title">スタジオ予約</h2>
-        <button class="close-button" @click="closeDialog">×</button>
+        <h2 class="dialog-title" tabindex="-1" autofocus>スタジオ予約</h2>
+        <button class="close-button" aria-label="予約入力を閉じる" @click="closeDialog">×</button>
       </div>
 
       <div class="dialog-body">
@@ -162,11 +162,12 @@
         </button>
       </div>
     </div>
-  </div>
+  </ModalDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
+import ModalDialog from "@/components/atoms/ModalDialog.vue";
 import type { CreateBookingRequest } from "@/api/bookingApi";
 import { fetchEquipmentList, type Equipment } from "@/api/equipmentApi";
 import { searchStudentsByName, type Student } from "@/api/studentApi";
@@ -360,20 +361,6 @@ watch(() => props.isVisible, (isVisible) => {
 </script>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
 .dialog-content {
   background: white;
   border-radius: 12px;
