@@ -56,7 +56,10 @@
           <div class="student-selection">
             <!-- 学生検索 -->
             <div class="student-search-group">
+              <label for="student-search" class="form-label">学生名で検索</label>
               <input
+                id="student-search"
+                ref="studentSearchInput"
                 v-model="studentSearchQuery"
                 type="text"
                 placeholder="学生名で検索 (例: 田中)"
@@ -64,18 +67,26 @@
                 @input="searchStudents"
                 @focus="showSearchResults = true"
               />
+              <p class="search-status" role="status">{{ studentSearchStatus }}</p>
+              <div v-if="studentSearchError" class="error-message" role="alert">
+                学生を検索できませんでした。接続を確認して、もう一度お試しください。
+                <button type="button" class="retry-button" @click="retryStudentSearch">学生検索をやり直す</button>
+              </div>
               <div v-if="showSearchResults && studentSearchResults.length > 0" class="search-results">
-                <div
+                <button
                   v-for="student in studentSearchResults"
                   :key="student.studentNumber"
+                  type="button"
+                  :aria-label="`${student.name} ${student.studentNumber} を追加`"
                   class="search-result-item"
                   @click="selectStudent(student)"
                 >
-                  <div class="student-info">
+                  <span class="student-info">
                     <span class="student-name">{{ student.name }}</span>
                     <span class="student-number">{{ student.studentNumber }}</span>
-                  </div>
-                </div>
+                  </span>
+                  <span>追加</span>
+                </button>
               </div>
             </div>
 
@@ -166,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import ModalDialog from "@/components/atoms/ModalDialog.vue";
 import type { CreateBookingRequest } from "@/api/bookingApi";
 import { fetchEquipmentList, type Equipment } from "@/api/equipmentApi";
@@ -195,8 +206,12 @@ const eventName = ref<string>("");
 
 // 学生検索関連
 const studentSearchQuery = ref<string>("");
+const studentSearchInput = ref<HTMLInputElement>();
 const studentSearchResults = ref<Student[]>([]);
 const showSearchResults = ref<boolean>(false);
+const studentSearchStatus = ref("");
+const studentSearchError = ref(false);
+let studentSearchRequest = 0;
 
 // 仮の備品データ（後でAPIから取得するように変更）
 const availableEquipment = ref<Equipment[]>([]);
@@ -228,28 +243,52 @@ function resetForm() {
   newStudentNumber.value = "";
   equipmentQuantities.value = {};
   eventName.value = "";
+  resetStudentSearch();
+}
+
+function resetStudentSearch() {
+  studentSearchRequest++;
   studentSearchQuery.value = "";
   studentSearchResults.value = [];
   showSearchResults.value = false;
+  studentSearchStatus.value = "";
+  studentSearchError.value = false;
 }
 
 // 学生検索
 async function searchStudents() {
+  const request = ++studentSearchRequest;
   const query = studentSearchQuery.value.trim();
+  studentSearchResults.value = [];
+  studentSearchError.value = false;
+  studentSearchStatus.value = "";
   if (query.length < 1) {
-    studentSearchResults.value = [];
     return;
   }
 
+  showSearchResults.value = true;
+  studentSearchStatus.value = "学生を検索しています…";
   try {
     const results = await searchStudentsByName(query);
+    if (request !== studentSearchRequest) return;
     studentSearchResults.value = results.filter(student => 
       !selectedStudents.value.some(selected => selected.studentNumber === student.studentNumber)
     );
+    studentSearchStatus.value = studentSearchResults.value.length
+      ? `${studentSearchResults.value.length}件の候補があります。追加する学生を選んでください。`
+      : "追加できる学生が見つかりませんでした。";
   } catch (error) {
+    if (request !== studentSearchRequest) return;
     console.error("学生検索エラー:", error);
     studentSearchResults.value = [];
+    studentSearchStatus.value = "";
+    studentSearchError.value = true;
   }
+}
+
+function retryStudentSearch() {
+  studentSearchInput.value?.focus();
+  searchStudents();
 }
 
 // 学生選択
@@ -257,9 +296,10 @@ function selectStudent(student: Student) {
   if (!selectedStudents.value.some(s => s.studentNumber === student.studentNumber)) {
     selectedStudents.value.push(student);
   }
-  studentSearchQuery.value = "";
-  studentSearchResults.value = [];
-  showSearchResults.value = false;
+  resetStudentSearch();
+  studentSearchStatus.value = `${student.name}を追加しました。`;
+  studentSearchError.value = false;
+  studentSearchInput.value?.focus();
 }
 
 function addStudent() {
@@ -352,12 +392,12 @@ onMounted(() => {
   loadEquipment();
 });
 
-// ダイアログが開かれた時にフォームをリセット
-watch(() => props.isVisible, (isVisible) => {
-  if (isVisible) {
-    resetForm();
-  }
+// 閉じた入力や別の予約種類へ、遅れた検索結果を表示しない。
+watch(() => props.isVisible, resetForm);
+watch(reservationType, () => {
+  resetStudentSearch();
 });
+onBeforeUnmount(() => { studentSearchRequest++; });
 </script>
 
 <style scoped>
@@ -480,10 +520,6 @@ watch(() => props.isVisible, (isVisible) => {
 }
 
 .search-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
   background: white;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -493,7 +529,21 @@ watch(() => props.isVisible, (isVisible) => {
   overflow-y: auto;
 }
 
+.search-status { margin: 8px 0; font-size: 14px; color: #374151; }
+.search-status:empty { margin: 0; }
+.search-result-item .student-info { min-width: 0; overflow-wrap: anywhere; }
+
 .search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  background: white;
+  border: 0;
+  font: inherit;
+  text-align: left;
   padding: 8px 12px;
   cursor: pointer;
   border-bottom: 1px solid #f3f4f6;
@@ -501,6 +551,11 @@ watch(() => props.isVisible, (isVisible) => {
 
 .search-result-item:hover {
   background: #f9fafb;
+}
+
+.search-result-item:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: -3px;
 }
 
 .search-result-item:last-child {
