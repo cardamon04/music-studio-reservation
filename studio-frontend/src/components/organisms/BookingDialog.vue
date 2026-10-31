@@ -147,14 +147,16 @@
               <div class="equipment-controls">
                 <button
                   @click="decreaseQuantity(equipment.id)"
+                  :aria-label="`${equipment.name}を1個減らす`"
                   :disabled="getQuantity(equipment.id) === 0"
                   class="quantity-button"
                 >
                   -
                 </button>
-                <span class="quantity-display">{{ getQuantity(equipment.id) }}</span>
+                <output class="quantity-display" :aria-label="`${equipment.name}の選択数量`" aria-live="polite" aria-atomic="true">{{ getQuantity(equipment.id) }}個</output>
                 <button
                   @click="increaseQuantity(equipment.id)"
+                  :aria-label="`${equipment.name}を1個増やす`"
                   :disabled="getQuantity(equipment.id) >= equipment.stock"
                   class="quantity-button"
                 >
@@ -651,6 +653,8 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 
 .equipment-item {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
@@ -664,6 +668,8 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 .equipment-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .equipment-name {
@@ -678,13 +684,14 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 
 .equipment-controls {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
 }
 
 .quantity-button {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border: 1px solid #d1d5db;
   background: white;
   border-radius: 4px;
@@ -692,6 +699,11 @@ onBeforeUnmount(() => { studentSearchRequest++; });
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.quantity-button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .quantity-button:disabled {
