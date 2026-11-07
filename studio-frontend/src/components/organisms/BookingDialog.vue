@@ -105,17 +105,22 @@
             </div>
 
             <!-- 選択された学生一覧 -->
-            <div class="student-list">
+            <div ref="selectedStudentList" class="student-list">
               <div
                 v-for="(student, index) in selectedStudents"
-                :key="index"
+                :key="student.studentNumber"
                 class="student-item"
               >
                 <div class="student-info">
                   <span class="student-name">{{ student.name }}</span>
                   <span class="student-number">{{ student.studentNumber }}</span>
                 </div>
-                <button @click="removeStudent(index)" class="remove-button">×</button>
+                <button
+                  type="button"
+                  :aria-label="`${student.name} ${student.studentNumber} を選択から外す`"
+                  @click="removeStudent(index)"
+                  class="remove-button"
+                >外す</button>
               </div>
             </div>
             <p v-if="selectedStudents.length === 0" class="empty-message">
@@ -179,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import ModalDialog from "@/components/atoms/ModalDialog.vue";
 import type { CreateBookingRequest } from "@/api/bookingApi";
 import { fetchEquipmentList, type Equipment } from "@/api/equipmentApi";
@@ -202,6 +207,7 @@ const emit = defineEmits<{
 // リアクティブな状態
 const reservationType = ref<string>("StudentRental");
 const selectedStudents = ref<Student[]>([]);
+const selectedStudentList = ref<HTMLDivElement>();
 const newStudentNumber = ref<string>("");
 const equipmentQuantities = ref<Record<string, number>>({});
 const eventName = ref<string>("");
@@ -318,8 +324,12 @@ function addStudent() {
   }
 }
 
-function removeStudent(index: number) {
+async function removeStudent(index: number) {
   selectedStudents.value.splice(index, 1);
+  await nextTick();
+  const buttons = selectedStudentList.value?.querySelectorAll<HTMLButtonElement>(".remove-button");
+  const adjacentButton = buttons?.[Math.min(index, buttons.length - 1)];
+  (adjacentButton ?? studentSearchInput.value)?.focus();
 }
 
 // スタジオ名からスタジオIDを取得する関数
@@ -608,6 +618,9 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 .student-item {
   display: flex;
   align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #e0f2fe;
   border: 1px solid #0ea5e9;
   border-radius: 6px;
@@ -616,11 +629,13 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 
 .student-info {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
 .student-name {
+  overflow-wrap: anywhere;
   font-weight: 500;
   color: #111827;
 }
@@ -631,6 +646,9 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 }
 
 .remove-button {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
   background: none;
   border: none;
   color: #dc2626;
