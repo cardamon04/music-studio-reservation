@@ -91,11 +91,14 @@
             </div>
 
             <!-- 学生番号直接入力 -->
+            <label for="student-number" class="form-label">学生番号で追加</label>
+            <p id="student-number-hint" class="student-number-hint">例: AB12345678</p>
             <div class="student-input-group">
               <input
+                id="student-number"
                 v-model="newStudentNumber"
                 type="text"
-                placeholder="または学生番号を直接入力 (例: AB12345678)"
+                aria-describedby="student-number-hint"
                 class="form-input"
                 @keyup.enter="addStudent"
               />
@@ -572,6 +575,12 @@ onBeforeUnmount(() => { studentSearchRequest++; });
 
 .search-result-item:last-child {
   border-bottom: none;
+}
+
+.student-number-hint {
+  margin: 0 0 8px;
+  color: #374151;
+  font-size: 14px;
 }
 
 .student-input-group {
