@@ -86,34 +86,32 @@ test('備品の読込中も閉じられ、エラー後の再試行ボタンへ�
   await expect(trigger).toBeFocused();
 });
 
-test('予約エラーも名前付きモーダルで表示し、閉じた後に枠を選び直せる', async ({ page }) => {
-  const trigger = await openBooking(page);
+test('保存結果不明を同じモーダル内に表示し、閉じた後に内容を確認できる', async ({ page }) => {
+  await openBooking(page);
   let writes = 0;
   await page.route('**/api/bookings', route => {
     writes++;
-    return route.fulfill({ status: 503, json: { message: 'テスト用の通信エラー' } });
+    return route.fulfill({ status: 503, json: { error: 'テスト用の通信エラー' } });
   });
   await page.locator('.form-select').selectOption('ClassRental');
-  await page.getByRole('button', { name: '予約確定', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '予約エラー' })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: '予約エラー' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '予約エラー' })).toBeFocused();
+  await page.getByRole('button', { name: '予約内容を保存', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'スタジオ予約' })).toBeVisible();
+  await expect(page.getByText('保存できたか確認できません。再送しないでください。', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(trigger).toBeFocused();
-  await trigger.press('Enter');
+  await page.getByRole('button', { name: '送信した内容を表示' }).click();
   await expect(page.getByRole('heading', { name: 'スタジオ予約' })).toBeFocused();
-  await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
   expect(writes).toBe(1);
 });
 
-test('成功後の一覧再描画で元の枠が消えたら、閉じた後は予約状況の見出しに戻る', async ({ page }) => {
+test('保存後の一覧再描画で元の枠が消えたら、閉じた後は予約状況の見出しに戻る', async ({ page }) => {
   await openBooking(page);
-  await page.route('**/api/bookings', route => route.fulfill({ json: { bookingId: 'test-booking' } }));
+  await page.route('**/api/bookings', route => route.fulfill({ json: { ...route.request().postDataJSON(), bookingId: 'test-booking', status: 'Pending', message: '' } }));
   await page.locator('.form-select').selectOption('ClassRental');
-  await page.getByRole('button', { name: '予約確定', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '予約完了' })).toBeVisible();
+  await page.getByRole('button', { name: '予約内容を保存', exact: true }).click();
+  await expect(page.getByText('予約内容を保存しました。', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'P1 09:00–10:30 空き枠を選ぶ', includeHidden: true })).toBeAttached();
-  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
   await expect(page.getByRole('heading', { name: '予約状況', exact: true })).toBeFocused();
 });
 

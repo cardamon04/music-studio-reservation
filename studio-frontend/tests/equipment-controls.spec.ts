@@ -58,10 +58,10 @@ test('備品の取得失敗から再試行すると数量を選べ、選択し�
   let requestBody: unknown;
   await page.route('**/api/bookings', route => {
     requestBody = route.request().postDataJSON();
-    return route.fulfill({ json: { bookingId: 'test-booking' } });
+    return route.fulfill({ json: { ...route.request().postDataJSON(), bookingId: 'test-booking', status: 'Pending', message: '' } });
   });
-  await page.getByRole('button', { name: '予約確定', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '予約完了' })).toBeVisible();
+  await page.getByRole('button', { name: '予約内容を保存', exact: true }).click();
+  await expect(page.getByText('予約内容を保存しました。', { exact: true })).toBeVisible();
   expect(requestBody).toMatchObject({ equipmentItems: [{ equipmentId: 'mic', quantity: 1 }] });
 });
 

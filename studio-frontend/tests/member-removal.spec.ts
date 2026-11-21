@@ -75,7 +75,7 @@ test('繰り返し選び直しても重複せず、キャンセルと再表示�
     await expect(page.locator('.student-item')).toHaveCount(1);
     await page.getByRole('button', { name: '田中 テスト AB12345678 を選択から外す' }).press('Space');
     await expect(page.locator('.student-item')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '予約確定', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '予約内容を保存', exact: true })).toBeDisabled();
   }
   await addStudent(page, 1);
   await page.getByRole('button', { name: 'キャンセル', exact: true }).click();

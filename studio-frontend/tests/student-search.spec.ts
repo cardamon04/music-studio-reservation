@@ -58,7 +58,7 @@ for (const action of ['clear', 'cancel', 'type'] as const) {
     await input.focus();
     await expect(input).toHaveValue('');
     await expect(page.locator('.search-result-item')).toHaveCount(0);
-    await expect(page.getByRole('status')).toBeEmpty();
+    await expect(page.locator('.search-status')).toBeEmpty();
   });
 }
 
@@ -103,7 +103,7 @@ test('320pxで候補をSpaceで追加し、重複を除外してキャンセル�
   await candidate.press('Space');
   await expect(input).toBeFocused();
   await input.fill('田中');
-  await expect(page.getByRole('status')).toHaveText('追加できる学生が見つかりませんでした。');
+  await expect(page.locator('.search-status')).toHaveText('追加できる学生が見つかりませんでした。');
   await expect(page.locator('.student-item')).toHaveCount(1);
   await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
   await page.getByRole('button', { name: 'P1 09:00–10:30 空き枠を選ぶ' }).press('Enter');
@@ -143,12 +143,12 @@ test('検索中・0件・失敗を区別し、入力を保ったまま再試行�
     await route.fulfill({ status: 503, body: 'Unavailable' });
   });
   await input.fill('田中');
-  await expect(page.getByRole('status')).toHaveText('学生を検索しています…');
+  await expect(page.locator('.search-status')).toHaveText('学生を検索しています…');
   release();
   await expect(page.getByRole('alert')).toContainText('学生を検索できませんでした。');
   await expect(input).toHaveValue('田中');
   await page.route('**/api/students/search?*', route => route.fulfill({ json: [] }));
   await page.getByRole('button', { name: '学生検索をやり直す' }).click();
-  await expect(page.getByRole('status')).toHaveText('追加できる学生が見つかりませんでした。');
+  await expect(page.locator('.search-status')).toHaveText('追加できる学生が見つかりませんでした。');
   await expect(page.getByRole('alert')).toBeHidden();
 });
