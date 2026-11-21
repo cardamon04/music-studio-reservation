@@ -44,5 +44,17 @@ export async function createBooking(booking: CreateBookingRequest): Promise<Crea
     throw new Error(`予約作成に失敗しました: ${errorData.error || response.statusText}`);
   }
 
-  return await response.json();
+  // The current controller returns 200 only after saving. 202 is not completion.
+  if (response.status !== 200) throw new Error('Unrecognised booking outcome');
+  const result: unknown = await response.json();
+  if (typeof result !== 'object' || result === null) throw new Error('Unrecognised booking response');
+  const saved = result as Record<string, unknown>;
+  if (typeof saved.bookingId !== 'string' || !saved.bookingId.trim()
+    || saved.studioId !== booking.studioId || saved.period !== booking.period
+    || saved.usageDate !== booking.usageDate || saved.reservationType !== booking.reservationType
+    || typeof saved.status !== 'string' || !saved.status
+    || typeof saved.message !== 'string') {
+    throw new Error('Unrecognised booking response');
+  }
+  return saved as unknown as CreateBookingResponse;
 }

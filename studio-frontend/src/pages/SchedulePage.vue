@@ -15,6 +15,12 @@
       </div>
     </header>
 
+    <section v-show="bookingSaveState !== 'idle' && !showReservationDialog" class="submission-notice">
+      <p v-if="!showReservationDialog" role="status">{{ bookingSaveMessage }}</p>
+      <p>送信した内容の結果を確認するまで、新しい予約入力は開始できません。</p>
+      <button type="button" class="btn-retry" @click="showReservationDialog = true">送信した内容を表示</button>
+    </section>
+
     <!-- Content -->
     <div class="container">
       <!-- ローディング状態 -->
@@ -33,7 +39,7 @@
       </div>
 
       <!-- データ表示 -->
-      <div v-else>
+      <div v-else :inert="bookingSaveState !== 'idle'">
         <!-- スタジオごとのカード -->
         <StudioCard
           v-for="s in studios"
@@ -56,19 +62,11 @@
       :selected-studio="reservationData.studioName"
       :selected-period="reservationData.periodLabel"
       :usage-date="reservationData.date"
+      :fallback-focus="pageTitle"
       @close="handleBookingDialogClose"
       @submit="handleBookingSubmit"
     />
 
-    <!-- メッセージダイアログ -->
-    <MessageDialog
-      :is-visible="showMessageDialog"
-      :title="messageDialog.title"
-      :message="messageDialog.message"
-      :type="messageDialog.type"
-      :fallback-focus="pageTitle"
-      @close="handleMessageDialogClose"
-    />
   </main>
 </template>
 
@@ -79,15 +77,14 @@
  * - 日付ごとの空き枠から予約入力を開く
  */
 
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, watch, onBeforeUnmount } from 'vue';
 import StudioCard from '@/components/organisms/StudioCard.vue';
 import DatePicker from '@/components/molecules/DatePicker.vue';
 import BookingDialog from '@/components/organisms/BookingDialog.vue';
-import MessageDialog, { type MessageButton } from '@/components/atoms/MessageDialog.vue';
 import type { Studio, PeriodSlot } from '@/lib/types';
 import { fetchBookingCalendar } from '@/api/bookingCalendarApi';
 import { transformBookingCalendarToStudios, formatDateForApi } from '@/lib/apiTransformers';
-import { createBooking, type CreateBookingRequest } from '@/api/bookingApi';
+import { bookingSlot as reservationData, bookingSaveState, bookingSaveMessage, submitBookingOnce, acknowledgeSavedBooking } from '@/lib/bookingSubmission';
 
 // ▼ 選択中の日付（現在の日付を使用）
 const pageTitle = ref<HTMLElement>();
@@ -112,23 +109,6 @@ let calendarRequest = 0;
 
 // ▼ 予約ダイアログの状態
 const showReservationDialog = ref(false);
-const reservationData = ref({
-  date: '',
-  dateLabel: '',
-  studioId: '',
-  studioName: '',
-  periodLabel: '',
-  timeRange: '',
-});
-
-// ▼ メッセージダイアログの状態
-const showMessageDialog = ref(false);
-const messageDialog = ref({
-  title: '',
-  message: '',
-  type: 'info' as 'success' | 'error' | 'warning' | 'info',
-});
-
 // ▼ データ取得関数
 async function fetchStudiosData() {
   const request = ++calendarRequest;
@@ -177,6 +157,7 @@ function handleSlotClick(studioId: string, slot: PeriodSlot) {
   console.log('slot.status:', slot.status);
   
   // 空きスロットの場合のみ予約ダイアログを開く
+  if (bookingSaveState.value !== 'idle') return;
   if (slot.status === 'available') {
     console.log('空きスロット検出！');
     const studio = studios.value.find(s => s.id === studioId);
@@ -226,60 +207,16 @@ function openReservationDialog(studioId: string, studioName: string, periodLabel
 // ▼ BookingDialog用のイベントハンドラー
 function handleBookingDialogClose() {
   showReservationDialog.value = false;
+  acknowledgeSavedBooking();
 }
 
-async function handleBookingSubmit(bookingRequest: CreateBookingRequest) {
-  console.log('予約確定:', bookingRequest);
-  
-  try {
-    // 予約APIを呼び出し
-    const response = await createBooking(bookingRequest);
-    
-    console.log('予約成功:', response);
-    
-    // 成功メッセージを表示
-    const formattedDate = bookingRequest.usageDate.replace(/-/g, '/');
-    showMessage('予約完了', 
-      `予約が確定しました。\nスタジオ: ${getStudioNameFromId(bookingRequest.studioId)}\n日付: ${formattedDate}\nコマ: ${bookingRequest.period}`, 
-      'success');
-    
-    // 予約成功後、データを再取得
-    await fetchStudiosData();
-    showReservationDialog.value = false;
-  } catch (err) {
-    console.error('予約エラー:', err);
-    const errorMessage = err instanceof Error ? err.message : '予約に失敗しました';
-    
-    // エラーメッセージを表示
-    showMessage('予約エラー', 
-      `${errorMessage}\n\nもう一度お試しください。`, 
-      'error');
-  }
-}
+const handleBookingSubmit = submitBookingOnce;
 
-// ▼ スタジオIDからスタジオ名を取得する関数
-function getStudioNameFromId(studioId: string): string {
-  const studioMapping: Record<string, string> = {
-    'A': 'Aスタ',
-    'B': 'Bスタ',
-    'C': 'Cスタ'
-  };
-  return studioMapping[studioId] || studioId;
-}
-
-// ▼ メッセージダイアログを表示する関数
-function showMessage(title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') {
-  messageDialog.value = {
-    title,
-    message,
-    type,
-  };
-  showMessageDialog.value = true;
-}
-
-function handleMessageDialogClose() {
-  showMessageDialog.value = false;
-}
+// A calendar failure cannot change a confirmed save into a failed POST.
+watch(bookingSaveState, state => {
+  if (state === 'saved') fetchStudiosData();
+});
+onBeforeUnmount(() => { calendarRequest++; });
 
 // ▼ 日付を表示用にフォーマット
 function formatDateForDisplay(date: Date): string {
@@ -319,6 +256,8 @@ function formatDateForDisplay(date: Date): string {
   --space-5: 20px;
   --space-6: 24px;
 }
+
+.submission-notice { max-width: 480px; margin: 16px auto; padding: 0 16px; box-sizing: border-box; }
 
 /* ===== Base ===== */
 .schedule-page {

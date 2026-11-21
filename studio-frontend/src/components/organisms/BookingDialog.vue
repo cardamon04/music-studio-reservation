@@ -1,6 +1,6 @@
 <!-- 予約ダイアログコンポーネント -->
 <template>
-  <ModalDialog :is-visible="isVisible" label="スタジオ予約" @close="closeDialog">
+  <ModalDialog :is-visible="isVisible" label="スタジオ予約" :fallback-focus="fallbackFocus" @close="closeDialog">
     <div class="dialog-content" @click.stop>
       <div class="dialog-header">
         <h2 class="dialog-title" tabindex="-1" autofocus>スタジオ予約</h2>
@@ -27,6 +27,7 @@
           </div>
         </div>
 
+        <fieldset :disabled="bookingSaveState !== 'idle'" class="booking-fields">
         <!-- 予約種類選択 -->
         <div class="form-section">
           <label class="form-label">予約種類</label>
@@ -174,12 +175,18 @@
             </div>
           </div>
         </div>
+        </fieldset>
       </div>
 
+      <div class="save-feedback">
+        <p role="status">{{ bookingSaveMessage }}</p>
+        <p v-if="bookingSaveState === 'pending' || bookingSaveState === 'unknown'">閉じても送信は取り消されません。送信した内容はこのタブで保持します。</p>
+        <p v-if="bookingSaveState === 'unknown'">新しい予約入力は開始できません。ページを再読み込みすると、この画面の記録は失われます。</p>
+      </div>
       <div class="dialog-footer">
-        <button @click="closeDialog" class="cancel-button">キャンセル</button>
-        <button @click="submitBooking" class="submit-button" :disabled="!canSubmit">
-          予約確定
+        <button @click="closeDialog" class="cancel-button">{{ bookingSaveState === 'idle' ? 'キャンセル' : '閉じる' }}</button>
+        <button @click="submitBooking" class="submit-button" :disabled="!canSubmit" :aria-disabled="bookingSaveState !== 'idle'">
+          {{ bookingSaveState === 'pending' ? '保存中…' : bookingSaveState === 'unknown' ? '再送できません' : bookingSaveState === 'saved' ? '保存済み' : '予約内容を保存' }}
         </button>
       </div>
     </div>
@@ -187,10 +194,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, toRefs } from "vue";
+import { bookingDraft, bookingSaveState, bookingSaveMessage, resetBookingDraft, bookingEquipment as availableEquipment } from '@/lib/bookingSubmission';
 import ModalDialog from "@/components/atoms/ModalDialog.vue";
 import type { CreateBookingRequest } from "@/api/bookingApi";
-import { fetchEquipmentList, type Equipment } from "@/api/equipmentApi";
+import { fetchEquipmentList } from "@/api/equipmentApi";
 import { searchStudentsByName, type Student } from "@/api/studentApi";
 
 // Props
@@ -199,6 +207,7 @@ const props = defineProps<{
   selectedStudio: string;
   selectedPeriod: string;
   usageDate: string;
+  fallbackFocus?: HTMLElement;
 }>();
 
 // Emits
@@ -208,12 +217,8 @@ const emit = defineEmits<{
 }>();
 
 // リアクティブな状態
-const reservationType = ref<string>("StudentRental");
-const selectedStudents = ref<Student[]>([]);
+const { reservationType, selectedStudents, newStudentNumber, equipmentQuantities, eventName } = toRefs(bookingDraft);
 const selectedStudentList = ref<HTMLDivElement>();
-const newStudentNumber = ref<string>("");
-const equipmentQuantities = ref<Record<string, number>>({});
-const eventName = ref<string>("");
 
 // 学生検索関連
 const studentSearchQuery = ref<string>("");
@@ -225,9 +230,9 @@ const studentSearchError = ref(false);
 let studentSearchRequest = 0;
 
 // 仮の備品データ（後でAPIから取得するように変更）
-const availableEquipment = ref<Equipment[]>([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref<string>("");
+let equipmentRequest = 0;
 
 // 計算プロパティ
 const canSubmit = computed(() => {
@@ -249,11 +254,7 @@ function closeDialog() {
 }
 
 function resetForm() {
-  reservationType.value = "StudentRental";
-  selectedStudents.value = [];
-  newStudentNumber.value = "";
-  equipmentQuantities.value = {};
-  eventName.value = "";
+  resetBookingDraft();
   resetStudentSearch();
 }
 
@@ -365,7 +366,7 @@ function decreaseQuantity(equipmentId: string) {
 }
 
 function submitBooking() {
-  if (!canSubmit.value) return;
+  if (!canSubmit.value || bookingSaveState.value !== 'idle') return;
 
   // 選択された備品のみを送信
   const equipmentItems = Object.entries(equipmentQuantities.value)
@@ -383,22 +384,25 @@ function submitBooking() {
   };
 
   emit("submit", booking);
-  closeDialog();
 }
 
 // 備品一覧を取得
 async function loadEquipment() {
+  if (bookingSaveState.value !== 'idle') return;
+  const request = ++equipmentRequest;
   equipmentLoading.value = true;
   equipmentError.value = "";
   
   try {
     const equipment = await fetchEquipmentList();
-    availableEquipment.value = equipment;
+    if (request !== equipmentRequest) return;
+    if (bookingSaveState.value === 'idle') availableEquipment.value = equipment;
   } catch (error) {
+    if (request !== equipmentRequest) return;
     equipmentError.value = "備品一覧の取得に失敗しました";
     console.error("備品一覧の取得エラー:", error);
   } finally {
-    equipmentLoading.value = false;
+    if (request === equipmentRequest) equipmentLoading.value = false;
   }
 }
 
@@ -412,10 +416,13 @@ watch(() => props.isVisible, resetForm);
 watch(reservationType, () => {
   resetStudentSearch();
 });
-onBeforeUnmount(() => { studentSearchRequest++; });
+onBeforeUnmount(() => { studentSearchRequest++; equipmentRequest++; });
 </script>
 
 <style scoped>
+.booking-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.save-feedback { padding: 0 24px; font-size: 14px; overflow-wrap: anywhere; }
+.submit-button[aria-disabled="true"] { opacity: .65; cursor: default; }
 .dialog-content {
   background: white;
   border-radius: 12px;
